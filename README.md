@@ -16,9 +16,6 @@ pip install wxcompose
 
 Here is comparison between wxpython and wxcompose
 
-<div style="display: flex; gap: 20px;">
-<div style="flex: 1;">
-#### wxpython
 ```python
 import wx
 
@@ -32,10 +29,7 @@ sizer.Add(txt, flag=wx.EXPAND | wx.ALL)
 frame.Show()
 app.MainLoop()
 ```
-</div>
 
-<div style="flex: 1;">
-#### wxcompose
 ```python
 import wx
 
@@ -51,11 +45,10 @@ with wxc.App() as app:
         frame.Show()
     app.MainLoop()
 ```
-</div>
-</div>
 
 `wxcompose.core` contains components for core wxpython controls, such as `wx.Frame`, `wx.BoxSizer`, `wx.StaticText`, etc.
 Examples of using generic component for controls
+
 ```python
 import wx
 from wx.lib.agw import pygauge
@@ -145,4 +138,4 @@ with wxc.TextCtrl() as _:
 
 ## License
 
-See LICENSE file for details.
+()
