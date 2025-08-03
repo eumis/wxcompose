@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable, Generator, Optional, Set, override
+from typing import Any, Callable, Generator, Optional, Set
 from uuid import uuid4
 
 import wx
@@ -70,7 +70,6 @@ class ValueBinding(Binding):
         self._on_mapper = mapper
         return self
 
-    @override
     def bind(self, component: Component, name: str):
         records, value = self._record()
         setattr(component.control, name, value)
@@ -130,7 +129,6 @@ class CallBinding(Binding):
         self._action = action
         self._binding_expression = binding_expression
 
-    @override
     def bind(self, component: "Component", name: str):
         records = self._record(component)
         disposables = []

@@ -144,4 +144,4 @@ with wxc.TextCtrl() as _:
 
 ## License
 
-()
+[MIT](LICENSE)
