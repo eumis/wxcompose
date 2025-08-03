@@ -1,8 +1,8 @@
 """Classes used for binding"""
 
-from typing import Any, Callable, override
+from typing import Any, Callable
 
-type ValueChanged = Callable[[Any, Any], Any]
+ValueChanged = Callable[[Any, Any], Any]
 
 
 class BaseViewModel:
@@ -46,7 +46,6 @@ class BaseViewModel:
 class ViewModel(BaseViewModel):
     """Bindable general object"""
 
-    @override
     def __setattr__(self, key: str, value: Any):
         if key in self.__dict__:
             old_val = getattr(self, key, None)
@@ -55,7 +54,6 @@ class ViewModel(BaseViewModel):
         else:
             super().__setattr__(key, value)
 
-    @override
     def observe(self, key: str, callback: ValueChanged) -> Callable:
         """Subscribes to key changes"""
         if key not in self.__dict__ and key not in self._callbacks:

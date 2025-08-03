@@ -46,6 +46,8 @@ with wxc.App() as app:
     app.MainLoop()
 ```
 
+---
+
 `wxcompose.core` contains components for core wxpython controls, such as `wx.Frame`, `wx.BoxSizer`, `wx.StaticText`, etc.
 Examples of using generic component for controls
 
@@ -93,6 +95,8 @@ with wxc.StaticText() as _:
     _.Label = bind(lambda: f"{view_model.name}: {view_model.label}")
 ```
 
+---
+
 if control property should be updated only when some specific view model field is changed, when() can be used
 
 ```python
@@ -113,6 +117,8 @@ view_model = TestViewModel()
 with wxc.StaticText() as _:
     _.Label = bind(lambda: f"{view_model.name}: {view_model.label}").when(lambda: view_model.name)
 ```
+
+---
 
 two way binding - on() method can be used to set ui event when view model should be updated and mapper
 
