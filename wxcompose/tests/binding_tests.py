@@ -189,12 +189,30 @@ class ValueBindingTests:
         vm = TestViewModel(value=init_value)
 
         with self.component as control:
-            setattr(control, property, bind(lambda: vm.value).set_vm_on(EVT_TEST))
+            setattr(control, property, bind(lambda: vm.value).on(EVT_TEST))
             actual_init = getattr(self.component.control, property)
         setattr(control, property, value)
 
         assert actual_init == init_value
         assert vm.value == value
+
+    @mark.parametrize(
+        "property, value, expected_value",
+        [
+            ("control_property", "1", 1),
+            ("control_property", "2", 2),
+            ("control_property", "55", 55),
+        ],
+    )
+    def test_bind_binds_vm_property_to_control_property_with_mapper(self, property, value, expected_value):
+        """should bind view model property to control property"""
+        vm = TestViewModel()
+
+        with self.component as control:
+            setattr(control, property, bind(lambda: vm.value).on(EVT_TEST, lambda v: int(v)))
+        setattr(control, property, value)
+
+        assert vm.value == expected_value
 
 
 @mark.usefixtures(binding_fixutre.__name__)

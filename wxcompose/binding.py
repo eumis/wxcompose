@@ -48,24 +48,26 @@ def recording() -> Generator[Set[ViewModelRecord], None, None]:
 
 
 class ValueBinding(Binding):
-    __slots__ = "_get_value", "_when", "_set_vm_on"
+    __slots__ = "_get_value", "_when", "_on"
 
     def __init__(
         self,
         get_value: Callable[[], Any],
         when: Optional[Callable[[], Any]] = None,
-        set_vm_on: Optional[wx.PyEventBinder] = None,
+        on: Optional[wx.PyEventBinder] = None,
     ):
         self._get_value = get_value
         self._when = when
-        self._set_vm_on: Optional[wx.PyEventBinder] = set_vm_on
+        self._on: Optional[wx.PyEventBinder] = on
+        self._on_mapper: Optional[Callable[[Any], Any]] = None
 
     def when(self, when: Callable[[], Any]) -> Any:
         self._when = when
         return self
 
-    def set_vm_on(self, event: wx.PyEventBinder) -> Any:
-        self._set_vm_on = event
+    def on(self, event: wx.PyEventBinder, mapper: Optional[Callable[[Any], Any]] = None) -> Any:
+        self._on = event
+        self._on_mapper = mapper
         return self
 
     @override
@@ -97,15 +99,17 @@ class ValueBinding(Binding):
     def _bind_vm_to_property(
         self, component: "Component", key: str, records: set[ViewModelRecord], disposables: list[Callable]
     ):
-        if self._set_vm_on and records:
+        if self._on and records:
             record = next(iter(records))
             vm, vm_property = record.view_model, record.key
             handler = partial(self._on_event, component.control, key, vm, vm_property)
-            component.control.Bind(self._set_vm_on, handler)
-            disposables.append(lambda: component.control.Unbind(self._set_vm_on, handler=handler))
+            component.control.Bind(self._on, handler)
+            disposables.append(lambda: component.control.Unbind(self._on, handler=handler))
 
     def _on_event(self, control, property, vm: Any, vm_property: str, event):
         new_value = getattr(control, property)
+        if self._on_mapper:
+            new_value = self._on_mapper(new_value)
         if getattr(vm, vm_property) != new_value:
             setattr(vm, vm_property, new_value)
         event.Skip()
@@ -114,9 +118,9 @@ class ValueBinding(Binding):
 def bind(
     get_value: Callable[[], Any],
     when: Optional[Callable[[], Any]] = None,
-    set_vm_on: Optional[wx.PyEventBinder] = None,
+    on: Optional[wx.PyEventBinder] = None,
 ) -> Any:
-    return ValueBinding(get_value, when, set_vm_on)
+    return ValueBinding(get_value, when, on)
 
 
 class CallBinding(Binding):

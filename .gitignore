@@ -16,3 +16,4 @@ Pipfile.lock
 venv/
 **__pycache__/
 config.lua
+AGENTS.md

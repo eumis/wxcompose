@@ -13,7 +13,8 @@ class TestViewModel(ViewModel):
         self.counter = 0
 
     def increment(self):
-        self.counter += 1
+        value = 1 if self.counter is None else self.counter + 1
+        self.counter = value
 
 
 def app():
@@ -22,15 +23,24 @@ def app():
     with wxc.App() as app:
         with wxc.Frame(title="Test", style=wx.DEFAULT_FRAME_STYLE | wx.CLIP_CHILDREN) as frame:
             with wxc.BoxSizer(orient=wx.VERTICAL):
+
                 with wxc.StaticText() as _:
-                    _.Label = bind(lambda: f"{view_model.label} {view_model.counter}")
+                    _.Label = bind(lambda: f"{view_model.label} {view_model.counter if view_model.counter else ''}")
                     bind_call(lambda c: c.control.Show(True))
-                    layout(flag=wx.EXPAND | wx.ALL)
+                    layout(flag=wx.EXPAND | wx.ALL, border=5)
+
+                with wxc.TextCtrl() as _:
+                    _.Value = bind(lambda: str(view_model.counter) if view_model.counter else "").on(
+                        wx.EVT_TEXT, lambda v: int(v) if v else None
+                    )
+                    layout(flag=wx.EXPAND | wx.ALL, border=5)
+
                 with wxc.Button(label="Increment") as _:
                     _.Bind(wx.EVT_BUTTON, lambda _: view_model.increment())
-                    layout(flag=wx.EXPAND | wx.ALL)
+                    layout(flag=wx.EXPAND | wx.ALL, border=5)
             frame.Show()
 
         app.MainLoop()
+
 
 app()
