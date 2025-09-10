@@ -1,49 +1,37 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Any, Callable, Generic, Optional, TypeVar, Union, cast, overload
 
 import wx
 
 
-class Binding(ABC):
-    @abstractmethod
-    def bind(self, component: "Component", name: str):
-        """bind component 'name' property"""
+class ComponentBase(ABC):
 
+    STACK: list["ComponentBase"] = []
 
-_COMPONENT_STACK: list["Component"] = []
+    def __enter__(self) -> Any:
+        self.STACK.append(self)
+        return self
+
+    def __exit__(self, *_):
+        self.STACK.pop()
 
 
 TControl = TypeVar("TControl")
 
 
-class Component(Generic[TControl]):
+class Component(ComponentBase, Generic[TControl]):
 
     _parent_: Optional[wx.Window] = None
     _sizer_: Optional[wx.Sizer] = None
 
     def __init__(self, control: TControl):
         self._control = control
-        self._binding_token = None
-        self._binding_disposables: dict[str, Callable] = {}
         self._disposables: set[Callable] = set()
         # if isinstance(control, wx.Window):
         #     control.Bind(wx.EVT_WINDOW_DESTROY, lambda _: self.dispose)
 
-        setattr(control, "__component__", self)
-        control_type = type(control)
-        if not hasattr(type(control), "__default_set_attr__"):
-            setattr(control_type, "__default_set_attr__", control_type.__setattr__)
-            control_type.__setattr__ = Component._setattr
-
-    @staticmethod
-    def _setattr(control: Any, name: str, value: Any):
-        if isinstance(value, Binding):
-            value.bind(control.__component__, name)
-        else:
-            type(control).__default_set_attr__(control, name, value)
-
     def __enter__(self) -> TControl:
-        _COMPONENT_STACK.append(self)
+        super().__enter__()
         if isinstance(self._control, wx.Window):
             Component._parent_ = self._control
         elif isinstance(self._control, wx.Sizer):
@@ -52,14 +40,15 @@ class Component(Generic[TControl]):
         return self._control
 
     def __exit__(self, *_):
-        _COMPONENT_STACK.pop()
+        super().__exit__(*_)
         if isinstance(self._control, wx.Window):
             Component._parent_ = next(
-                (c.control for c in reversed(_COMPONENT_STACK) if isinstance(c.control, wx.Window)), None
+                (w for w in (get_window_control(c) for c in reversed(self.STACK)) if w is not None), None
             )
         elif isinstance(self._control, wx.Sizer):
-            if _COMPONENT_STACK and isinstance(_COMPONENT_STACK[-1].control, wx.Window):
-                _COMPONENT_STACK[-1].control.SetSizer(self._control, True)
+            sizer_owner = get_window_control(self.STACK[-1]) if self.STACK else None
+            if sizer_owner:
+                sizer_owner.SetSizer(self._control, True)
             Component._sizer_ = self._parent_sizer
 
     @property
@@ -68,13 +57,17 @@ class Component(Generic[TControl]):
             raise ValueError("Not rendered")
         return self._control
 
-    def add_dispose(self, *dispose: Callable):
-        self._disposables.update(dispose)
-
     def dispose(self):
-        for dispose in self._disposables:
-            dispose()
-        self._disposables = set()
+        bindings = getattr(self._control, "__bindings__", None)
+        if bindings:
+            for binding in bindings:
+                binding.dispose()
+            setattr(self._control, "__bindings__", None)
+
+
+def get_window_control(component: ComponentBase) -> Optional[wx.Window]:
+    control = getattr(component, "control", None)
+    return control if isinstance(control, wx.Window) else None
 
 
 ReturnType = TypeVar("ReturnType")
@@ -82,8 +75,8 @@ ReturnType = TypeVar("ReturnType")
 
 def current(_: Optional[type[ReturnType]] = None) -> ReturnType:
     """returns current component"""
-    if _COMPONENT_STACK:
-        return cast(ReturnType, _COMPONENT_STACK[-1])
+    if ComponentBase.STACK:
+        return cast(ReturnType, ComponentBase.STACK[-1])
     raise RuntimeError("No current component")
 
 
@@ -104,16 +97,29 @@ def sizer(_: Optional[type[ReturnType]] = None) -> ReturnType:
 
 
 @overload
-def layout(proportion: int = 0, flag: int = 0, border: int = 0, userData=None) -> wx.SizerItem: ...
+def sizer_add(proportion: int = 0, flag: int = 0, border: int = 0, userData=None) -> wx.SizerItem: ...
 
 
 @overload
-def layout(flags: wx.SizerFlags) -> wx.SizerItem: ...
+def sizer_add(
+    item: wx.Window | wx.Sizer, proportion: int = 0, flag: int = 0, border: int = 0, userData=None
+) -> wx.SizerItem: ...
 
 
-def layout(*args, **kwargs) -> wx.SizerItem:
+@overload
+def sizer_add(flags: wx.SizerFlags) -> wx.SizerItem: ...
+
+
+@overload
+def sizer_add(window: wx.Window | wx.Sizer, flags: wx.SizerFlags) -> wx.SizerItem: ...
+
+
+def sizer_add(*args, **kwargs) -> wx.SizerItem:
     """adds current control to sizer"""
-    return sizer(wx.Sizer).Add(current().control, *args, **kwargs)
+    if len(args) > 0 and (isinstance(args[0], wx.Window) or isinstance(args[0], wx.Sizer)):
+        return sizer(wx.Sizer).Add(*args, **kwargs)
+    else:
+        return sizer(wx.Sizer).Add(current().control, *args, **kwargs)
 
 
 def cmp(control: Union[type[TControl], TControl]) -> Component[TControl]:

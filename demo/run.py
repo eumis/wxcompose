@@ -1,8 +1,8 @@
 import wx
 
 from wxcompose import core as wxc
-from wxcompose.binding import bind, bind_call
-from wxcompose.component import layout
+from wxcompose.binding import bind, sync, to
+from wxcompose.component import sizer_add
 from wxcompose.viewmodel import ViewModel
 
 
@@ -25,19 +25,18 @@ def app():
             with wxc.BoxSizer(orient=wx.VERTICAL):
 
                 with wxc.StaticText() as _:
-                    _.Label = bind(lambda: f"{view_model.label} {view_model.counter if view_model.counter else ''}")
-                    bind_call(lambda c: c.control.Show(True))
-                    layout(flag=wx.EXPAND | wx.ALL, border=5)
+                    bind(_).Label = to(lambda: f"{view_model.label} {view_model.counter if view_model.counter else ''}")
+                    sizer_add(flag=wx.EXPAND | wx.ALL, border=5)
 
                 with wxc.TextCtrl() as _:
-                    _.Value = bind(lambda: str(view_model.counter) if view_model.counter else "").on(
-                        wx.EVT_TEXT, lambda v: int(v) if v else None
+                    sync(_, wx.EVT_TEXT, lambda v: int(v) if v else None).Value = to(view_model).counter.map_(
+                        lambda v: str(v) if v else ""
                     )
-                    layout(flag=wx.EXPAND | wx.ALL, border=5)
+                    sizer_add(flag=wx.EXPAND | wx.ALL, border=5)
 
                 with wxc.Button(label="Increment") as _:
                     _.Bind(wx.EVT_BUTTON, lambda _: view_model.increment())
-                    layout(flag=wx.EXPAND | wx.ALL, border=5)
+                    sizer_add(flag=wx.EXPAND | wx.ALL, border=5)
             frame.Show()
 
         app.MainLoop()

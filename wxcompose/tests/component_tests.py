@@ -4,7 +4,7 @@ import wx
 from pytest import fixture, mark, raises
 from wx.lib import newevent
 
-from wxcompose.component import Binding, Component, cmp, current, layout, parent, sizer
+from wxcompose.component import Component, cmp, current, parent, sizer, sizer_add
 
 TestEventObject, EVT_TEST = newevent.NewEvent()
 
@@ -73,16 +73,6 @@ class ComponentTests:
         with raises(RuntimeError):
             current()
 
-    @mark.parametrize("property", ["one", "control_property"])
-    def test_with_starts_handle_binding(self, property: str):
-        """should handle binding on property set"""
-        binding = Mock(spec=Binding)
-
-        with self.component as control:
-            setattr(control, property, binding)
-
-        assert binding.bind.call_args == call(self.component, property)
-
     @mark.parametrize(
         "one_type, two_type",
         [
@@ -130,28 +120,28 @@ class ComponentTests:
         assert parent_window.SetSizer.call_args == call(sizer, True)
 
     @mark.parametrize(
-        "disposables",
+        "bindings",
         [
             [Mock()],
             [Mock(), Mock()],
             [Mock(), Mock(), Mock()],
         ],
     )
-    def test_dispose(self, disposables: list[Mock]):
+    def test_dispose(self, bindings: list[Mock]):
         """should dispose added disposables"""
-        self.component.add_dispose(*disposables)
+        setattr(self.component.control, "__bindings__", bindings)
 
         self.component.dispose()
 
-        for dispose in disposables:
-            assert dispose.called
+        for binding in bindings:
+            assert binding.dispose.called
 
     @mark.parametrize("proportion, flag, border", [(0, 0, 0), (0, wx.ALL, 0), (1, wx.EXPAND, 5)])
-    def test_layout(self, proportion, flag, border):
+    def test_sizer_add(self, proportion, flag, border):
         """should add current control to sizer"""
         with Component(Mock(spec=wx.BoxSizer)) as sizer:
             with Component(Mock(spec=wx.StaticText)) as control:
-                layout(proportion=proportion, flag=flag, border=border)
+                sizer_add(proportion=proportion, flag=flag, border=border)
 
         assert sizer.Add.call_args == call(control, proportion=proportion, flag=flag, border=border)
 
