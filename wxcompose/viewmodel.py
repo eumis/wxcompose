@@ -3,8 +3,7 @@
 import logging
 from contextlib import contextmanager
 from dataclasses import dataclass
-from functools import partial
-from typing import Any, Callable, Generator, Set, TypeVar, overload
+from typing import Any, Callable, Generator, Optional, Set, TypeVar
 
 ValueChanged = Callable[[Any, Any], Any]
 
@@ -107,18 +106,20 @@ def recording() -> Generator[Set[ViewModelRecord], None, None]:
 T = TypeVar("T")
 
 
-class ExpressionObserver:
+class ViewModelExpression:
     __slots__ = "_expression", "_disposes"
 
     def __init__(self, expression: Callable[[], Any]):
         self._expression: Callable[[], Any] = expression
         self._disposes: list[Callable] = []
 
-    def _call(self, pass_value: bool, callback: Callable) -> Any:
+    def _call(self, pass_value: bool, callback: Optional[Callable]) -> "ViewModelExpression":
         with recording() as records:
             self._expression()
-        if pass_value:
+        if pass_value and callback is not None:
             set_value_callback = lambda *_: callback(self._expression())
+        elif callback is None:
+            set_value_callback = lambda *_: self._expression()
         else:
             set_value_callback = lambda *_: callback()
         for record in records:
@@ -128,28 +129,10 @@ class ExpressionObserver:
                 _LOGGER.warning(f"Can't subscribe to {record.key} property for {record.view_model}")
         return self
 
-    @overload
-    def call(self, callback: Callable[[], Any]) -> "ExpressionObserver": ...
-
-    @overload
-    def call(self, param: T, callback: Callable[[T], Any]) -> "ExpressionObserver": ...
-
-    @overload
-    def call_value(self, callback: Callable[[Any], Any]) -> "ExpressionObserver": ...
-
-    @overload
-    def call_value(self, param: T, callback: Callable[[T, Any], Any]) -> "ExpressionObserver": ...
-
-    def call(self, *args, **_):
-        callback = args[-1]
-        if len(args) > 1:
-            callback = partial(callback, args[0])
+    def call(self, callback: Optional[Callable[[], Any]] = None) -> "ViewModelExpression":
         return self._call(False, callback)
 
-    def call_value(self, *args, **_):
-        callback = args[-1]
-        if len(args) > 1:
-            callback = partial(callback, args[0])
+    def call_value(self, callback: Callable[[Any], Any]) -> "ViewModelExpression":
         return self._call(True, callback)
 
     def dispose(self):
@@ -158,5 +141,5 @@ class ExpressionObserver:
         self._disposes = []
 
 
-def when(expression: Callable[[], Any]) -> ExpressionObserver:
-    return ExpressionObserver(expression)
+def when(expression: Callable[[], Any]) -> ViewModelExpression:
+    return ViewModelExpression(expression)

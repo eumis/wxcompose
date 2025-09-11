@@ -131,7 +131,7 @@ class RecordingTests:
         assert actual == records(one, two)
 
 
-class ExpressionObserverTests:
+class ViewModelExpressionTests:
     @mark.parametrize(
         "one_value, two_value, new_i, new_value",
         [

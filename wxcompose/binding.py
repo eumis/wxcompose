@@ -4,7 +4,7 @@ from typing import Any, Callable, Generic, Optional, TypeVar, overload, override
 
 import wx
 
-from wxcompose.viewmodel import ViewModel, ViewModelRecord, recording, when
+from wxcompose.viewmodel import ViewModel, when
 
 
 class Binding(ABC):
@@ -22,12 +22,13 @@ class ViewModelBinding(Binding):
         self._get_value = get_value
         self._when = when
         self._dispose: Optional[Callable] = None
-        self._map = map
 
     def bind(self, callback: Callable[[Any], Any]):
+        if self._when:
+            self._dispose = when(self._when).call(lambda: callback(self._get_value())).dispose
+        else:
+            self._dispose = when(self._get_value).call_value(callback).dispose
         callback(self._get_value())
-        set_value_callback = lambda *_: callback(self._get_value())
-        self._dispose = when(self._when if self._when else self._get_value).call(set_value_callback).dispose
 
     @override
     def dispose(self):
@@ -177,6 +178,9 @@ class LeftExpression(Generic[T]):
         """set binding value mapper"""
         self._map_ = map
         return self
+
+    def call(self, callback: Callable[[T], Any]) -> Any:
+        when(lambda: callback(self._bindable_entity_)).call()
 
 
 class ViewModelLeft(LeftExpression[TViewModel]):

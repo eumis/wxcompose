@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import wx
 from pytest import fixture, mark
@@ -88,7 +88,7 @@ def binding_fixutre(request):
 
 
 @mark.usefixtures(binding_fixutre.__name__)
-class ValueBindingTests:
+class BindingTests:
 
     component: TestComponent
     control: TestControl
@@ -111,6 +111,24 @@ class ValueBindingTests:
 
         setattr(self.vm, property, property_value)
         assert self.control.control_property == expression()
+
+    @mark.parametrize(
+        "name, value, property, property_value",
+        [
+            ("name", "value", "name", "new name"),
+            ("other name", "other value", "value", "new value"),
+        ],
+    )
+    def test_bind_control_method_to_vm_expression(self, name, value, property, property_value):
+        """should bind control property to vm expression"""
+        self.vm.name, self.vm.value = name, value
+        expression = lambda: self.vm.name + self.vm.value
+
+        bind(self.control).call(lambda _: _.one_method(expression()))
+        assert self.control.one_method.call_args == call(expression())
+
+        setattr(self.vm, property, property_value)
+        assert self.control.one_method.call_args == call(expression())
 
     @mark.parametrize(
         "value, new_value",
