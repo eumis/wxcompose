@@ -101,7 +101,7 @@ class BindingTests:
             ("other name", "other value", "value", "new value"),
         ],
     )
-    def test_bind_control_to_vm_expression(self, name, value, property, property_value):
+    def test_bind_control_property_to_vm_expression(self, name, value, property, property_value):
         """should bind control property to vm expression"""
         self.vm.name, self.vm.value = name, value
         expression = lambda: self.vm.name + self.vm.value
@@ -112,22 +112,47 @@ class BindingTests:
         setattr(self.vm, property, property_value)
         assert self.control.control_property == expression()
 
-    @mark.parametrize(
-        "name, value, property, property_value",
-        [
-            ("name", "value", "name", "new name"),
-            ("other name", "other value", "value", "new value"),
-        ],
-    )
-    def test_bind_control_method_to_vm_expression(self, name, value, property, property_value):
-        """should bind control property to vm expression"""
-        self.vm.name, self.vm.value = name, value
+    def test_bind_control_method_to_vm_expression(self):
+        """should bind control method call to changes"""
+        self.vm.name, self.vm.value = "name", "value"
         expression = lambda: self.vm.name + self.vm.value
 
         bind(self.control).call(lambda _: _.one_method(expression()))
         assert self.control.one_method.call_args == call(expression())
 
-        setattr(self.vm, property, property_value)
+        self.vm.name = "new name"
+        assert self.control.one_method.call_args == call(expression())
+
+        self.vm.value = "new value"
+        assert self.control.one_method.call_args == call(expression())
+
+    def test_bind_control_method_to_vm_expression_on_when(self):
+        """should bind control method call to vm expression"""
+        self.vm.name, self.vm.value = "name", "value"
+        expression = lambda: self.vm.name + self.vm.value
+
+        bind(self.control).call(lambda _: _.one_method(expression()), lambda: self.vm.value)
+        assert not self.control.one_method.called
+
+        self.vm.name = "new name"
+        assert not self.control.one_method.called
+
+        self.vm.value = "new value"
+        assert self.control.one_method.call_args == call(expression())
+
+    def test_bind_control_method_to_vm_expression_on_when_initial_call(self):
+        """should bind control method call to vm expression and call initially"""
+        self.vm.name, self.vm.value = "name", "value"
+        expression = lambda: self.vm.name + self.vm.value
+
+        bind(self.control).call(lambda _: _.one_method(expression()), lambda: self.vm.value, True)
+        assert self.control.one_method.call_args == call(expression())
+        self.control.one_method.reset_mock()
+
+        self.vm.name = "new name"
+        assert not self.control.one_method.called
+
+        self.vm.value = "new value"
         assert self.control.one_method.call_args == call(expression())
 
     @mark.parametrize(
@@ -137,7 +162,7 @@ class BindingTests:
             ("value", "new value"),
         ],
     )
-    def test_bind_control_to_vm_property(self, value, new_value):
+    def test_bind_control_property_to_vm_property(self, value, new_value):
         """should bind control property to vm property"""
         self.vm.value = value
 
@@ -172,7 +197,7 @@ class BindingTests:
         ],
     )
     def test_sync_control_to_vm_with_right_change(self, value, new_value):
-        """should bind control property to vm property"""
+        """should bind control property to vm property in two ways"""
         self.vm.value = value
 
         sync(self.control, EVT_TEST).control_property = to(self.vm).value
@@ -189,7 +214,7 @@ class BindingTests:
         ],
     )
     def test_sync_control_to_vm_with_left_change(self, value, new_value):
-        """should bind control property to vm property"""
+        """should bind control property to vm property in two ways"""
         self.vm.value = value
 
         sync(self.control, EVT_TEST).control_property = to(self.vm).value
@@ -206,7 +231,7 @@ class BindingTests:
         ],
     )
     def test_sync_control_to_vm_with_mapping(self, control_value, vm_value):
-        """should bind control property to vm property"""
+        """should bind control property to vm property int two ways with mapping"""
         self.vm.value = 0
 
         sync(self.control, EVT_TEST).map_(lambda v: int(v)).control_property = to(self.vm).value.map_(lambda v: str(v))
@@ -225,7 +250,7 @@ class BindingTests:
         ],
     )
     def test_sync_vm_to_control_with_right_change(self, value, new_value):
-        """should bind control property to vm property"""
+        """should bind control property to vm property in two ways"""
         self.control.control_property = value
 
         sync(self.vm).value = to(self.control, EVT_TEST).control_property
@@ -242,7 +267,7 @@ class BindingTests:
         ],
     )
     def test_sync_vm_to_control_with_left_change(self, value, new_value):
-        """should bind control property to vm property"""
+        """should bind control property to vm property in two ways"""
         self.control.control_property = value
 
         sync(self.vm).value = to(self.control, EVT_TEST).control_property
@@ -259,7 +284,7 @@ class BindingTests:
         ],
     )
     def test_sync_vm_to_control_with_mapping(self, control_value, vm_value):
-        """should bind control property to vm property"""
+        """should bind control property to vm property in two ways with mapping"""
         self.control.control_property = "0"
 
         sync(self.vm).map_(lambda v: str(v)).value = to(self.control, EVT_TEST).map_(lambda v: int(v)).control_property

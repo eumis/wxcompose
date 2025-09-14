@@ -2,7 +2,7 @@ from unittest.mock import Mock, call
 
 from pytest import fixture, mark, raises
 
-from wxcompose.viewmodel import ViewModel, ViewModelRecord, recording, when
+from wxcompose.viewmodel import ViewModel
 
 
 class TestViewModel(ViewModel):
@@ -98,76 +98,3 @@ class ViewModelTests:
         getattr(self.view_model, name)()
 
         assert self.callback.call_args == call(True, False)
-
-
-class RecordingTests:
-
-    entity_vm: ViewModel
-
-    @mark.parametrize(
-        "expression, records",
-        [
-            (lambda one, two: one.name, lambda one, two: {ViewModelRecord(one, "name")}),
-            (lambda one, two: two.name, lambda one, two: {ViewModelRecord(two, "name")}),
-            (
-                lambda one, two: one.name + one.name,
-                lambda one, two: {ViewModelRecord(one, "name")},
-            ),
-            (
-                lambda one, two: one.name + one.value,
-                lambda one, two: {ViewModelRecord(one, "name"), ViewModelRecord(one, "value")},
-            ),
-            (
-                lambda one, two: (one.name, two.name),
-                lambda one, two: {ViewModelRecord(one, "name"), ViewModelRecord(two, "name")},
-            ),
-        ],
-    )
-    def test_recording_view_model(self, expression, records):
-        one, two = TestViewModel(1, "name", "value"), TestViewModel(2, "name 2", "value 2")
-        with recording() as actual:
-            expression(one, two)
-
-        assert actual == records(one, two)
-
-
-class ViewModelExpressionTests:
-    @mark.parametrize(
-        "one_value, two_value, new_i, new_value",
-        [
-            ("name", "value", 0, "new name"),
-            ("other name", "other value", 1, "new value"),
-        ],
-    )
-    def test_calls_callback_on_change(self, one_value, two_value, new_i, new_value):
-        """should call callback with expression value"""
-        one, two = TestViewModel(1, "one", one_value), TestViewModel(2, "two", two_value)
-        vms = [one, two]
-        expression = lambda: one.value + two.value
-        callback = Mock()
-
-        when(expression).call(callback)
-        assert not callback.called
-
-        setattr(vms[new_i], "value", new_value)
-        assert callback.call_args == call()
-
-    @mark.parametrize(
-        "one_value, two_value, new_i, new_value",
-        [
-            ("name", "value", 0, "new name"),
-            ("other name", "other value", 1, "new value"),
-        ],
-    )
-    def test_calls_with_passed_params(self, one_value, two_value, new_i, new_value):
-        """should bind control property to vm expression"""
-        one, two = TestViewModel(1, "one", one_value), TestViewModel(2, "two", two_value)
-        vms = [one, two]
-        expression = lambda: one.value + two.value
-        callback = Mock()
-
-        when(expression).call_value(callback)
-        assert not callback.called
-
-        setattr(vms[new_i], "value", new_value)
-        assert callback.call_args == call(expression())

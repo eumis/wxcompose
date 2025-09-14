@@ -5,6 +5,7 @@ import wx
 
 
 class ComponentBase(ABC):
+    """Base class for components"""
 
     STACK: list["ComponentBase"] = []
 
@@ -20,6 +21,7 @@ TControl = TypeVar("TControl")
 
 
 class Component(ComponentBase, Generic[TControl]):
+    """Control component"""
 
     _parent_: Optional[wx.Window] = None
     _sizer_: Optional[wx.Sizer] = None
@@ -27,8 +29,8 @@ class Component(ComponentBase, Generic[TControl]):
     def __init__(self, control: TControl):
         self._control = control
         self._disposables: set[Callable] = set()
-        # if isinstance(control, wx.Window):
-        #     control.Bind(wx.EVT_WINDOW_DESTROY, lambda _: self.dispose)
+        if isinstance(control, wx.Window):
+            control.Bind(wx.EVT_WINDOW_DESTROY, lambda _: self.dispose)
 
     def __enter__(self) -> TControl:
         super().__enter__()
@@ -43,10 +45,10 @@ class Component(ComponentBase, Generic[TControl]):
         super().__exit__(*_)
         if isinstance(self._control, wx.Window):
             Component._parent_ = next(
-                (w for w in (get_window_control(c) for c in reversed(self.STACK)) if w is not None), None
+                (w for w in (_get_window_control(c) for c in reversed(self.STACK)) if w is not None), None
             )
         elif isinstance(self._control, wx.Sizer):
-            sizer_owner = get_window_control(self.STACK[-1]) if self.STACK else None
+            sizer_owner = _get_window_control(self.STACK[-1]) if self.STACK else None
             if sizer_owner:
                 sizer_owner.SetSizer(self._control, True)
             Component._sizer_ = self._parent_sizer
@@ -65,7 +67,7 @@ class Component(ComponentBase, Generic[TControl]):
             setattr(self._control, "__bindings__", None)
 
 
-def get_window_control(component: ComponentBase) -> Optional[wx.Window]:
+def _get_window_control(component: ComponentBase) -> Optional[wx.Window]:
     control = getattr(component, "control", None)
     return control if isinstance(control, wx.Window) else None
 
@@ -89,7 +91,7 @@ def sizer(_: Optional[type[ReturnType]] = None) -> ReturnType:
     """returns current sizer"""
     try:
         current_component = current()
-        if isinstance(current_component.control, wx.Sizer):
+        if isinstance(getattr(current_component, "control", None), wx.Sizer):
             return cast(ReturnType, current_component._parent_sizer)
     except RuntimeError:
         pass
@@ -123,7 +125,7 @@ def sizer_add(*args, **kwargs) -> wx.SizerItem:
 
 
 def cmp(control: Union[type[TControl], TControl]) -> Component[TControl]:
-    """creates component"""
+    """creates control component"""
     if isinstance(control, type):
         return Component(cast(TControl, control(parent())))  # type: ignore
     return Component(control)
