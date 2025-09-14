@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable, Generic, Optional, TypeVar, overload, override
+from typing import Any, Callable, Generic, Optional, TypeVar, Union, overload
 
 import wx
 
@@ -102,7 +102,6 @@ class ViewModelBinding(ValueBinding):
     def set_callback(self, set_value: Callable[[Any], Any]):
         self._set_value = set_value
 
-    @override
     def bind(self):
         if self._set_value is None:
             raise ValueError("callback is not set")
@@ -118,7 +117,6 @@ class ViewModelBinding(ValueBinding):
         self._disposes = observe(records, set_value_callback)
         callback(value)
 
-    @override
     def dispose(self):
         if self._disposes:
             for dispose in self._disposes:
@@ -135,7 +133,6 @@ class CallBinding(Binding):
         self._initial_call: bool = initial_call
         self._dispose: Optional[Callable] = None
 
-    @override
     def bind(self):
         if self._when:
             with Recording() as records:
@@ -147,7 +144,6 @@ class CallBinding(Binding):
                 self._call()
         self._disposes = observe(records, lambda *_: self._call())
 
-    @override
     def dispose(self):
         if self._dispose:
             self._dispose()
@@ -156,6 +152,7 @@ class CallBinding(Binding):
 
 class WxEventBinding(ValueBinding):
     """Binds value to wx event"""
+
     def __init__(self, event_handler: wx.EvtHandler, event: wx.PyEventBinder, get_value: Callable[[], Any]):
         self._event_handler: wx.EvtHandler = event_handler
         self._event_binder: Optional[wx.PyEventBinder] = event
@@ -166,7 +163,6 @@ class WxEventBinding(ValueBinding):
     def set_callback(self, set_value: Callable[[Any], Any]):
         self._set_value = set_value
 
-    @override
     def bind(self):
         if self._event_binder is None or self._set_value is None:
             raise ValueError("event binder or callback is not set")
@@ -178,7 +174,6 @@ class WxEventBinding(ValueBinding):
         callback(self._get_value())
         event.Skip()
 
-    @override
     def dispose(self):
         if self._event_binder:
             self._event_handler.Unbind(self._event_binder, handler=self._event_callback)
@@ -227,7 +222,6 @@ class RightExpression(Generic[T]):
 
 class ViewModelRight(RightExpression[TViewModel]):
 
-    @override
     def _get_binding_(self) -> ValueBinding:
         entity, property, map = self._bindable_entity_, self._bindable_property_, self._map_
         if not property:
@@ -249,7 +243,6 @@ class EventHandlerRight(RightExpression[TEventHandler]):
         self._event_binder_: Optional[wx.PyEventBinder] = event
         """Bindable event binder"""
 
-    @override
     def _get_binding_(self) -> ValueBinding:
         entity, event_binder, property = self._bindable_entity_, self._event_binder_, self._bindable_property_
         if not event_binder or not property:
@@ -325,7 +318,6 @@ class LeftExpression(Generic[T]):
 
 class ViewModelLeft(LeftExpression[TViewModel]):
 
-    @override
     def _get_binding_(self) -> ValueBinding:
         entity, property, map = self._bindable_entity_, self._bindable_property_, self._map_
         if not property:
@@ -348,7 +340,6 @@ class EventHandlerLeft(LeftExpression[TEventHandler]):
         self._event_binder_: Optional[wx.PyEventBinder] = event
         """Bindable event"""
 
-    @override
     def _get_binding_(self) -> ValueBinding:
         entity, event_binder, property = self._bindable_entity_, self._event_binder_, self._bindable_property_
         if not event_binder or not property:
@@ -366,21 +357,21 @@ def to(get_value: Callable[[], Any], when: Optional[Callable[[], Any]] = None) -
 
 @overload
 def to(
-    view_model: TViewModel | RightExpression[TViewModel], map: Optional[Callable[[Any], Any]] = None
+    view_model: Union[TViewModel, RightExpression[TViewModel]], map: Optional[Callable[[Any], Any]] = None
 ) -> ViewModelRight[TViewModel]:
     """returns ViewModelRight"""
 
 
 @overload
 def to(
-    event_handler: TEventHandler | RightExpression[TEventHandler],
+    event_handler: Union[TEventHandler, RightExpression[TEventHandler]],
     event: wx.PyEventBinder,
     map: Optional[Callable[[Any], Any]] = None,
 ) -> EventHandlerRight[TEventHandler]:
     """returns EventHandlerRight with binding for event_handler"""
 
 
-def to(*args, **kwargs) -> RightExpression | ViewModelBinding:
+def to(*args, **kwargs) -> Union[RightExpression, ViewModelBinding]:
     bindable = None
     if isinstance(args[0], ViewModel):
         bindable = ViewModelRight(*args, **kwargs)
@@ -398,17 +389,17 @@ def to(*args, **kwargs) -> RightExpression | ViewModelBinding:
 
 
 @overload
-def bind(event_handler: TEventHandler | LeftExpression[TEventHandler]) -> EventHandlerLeft[TEventHandler]:
+def bind(event_handler: Union[TEventHandler, LeftExpression[TEventHandler]]) -> EventHandlerLeft[TEventHandler]:
     """returns Bindable with binding for control"""
 
 
 @overload
-def bind(event_handler: T | LeftExpression[T]) -> LeftExpression[T]:
+def bind(event_handler: Union[T, LeftExpression[T]]) -> LeftExpression[T]:
     """returns Bindable with binding for control"""
 
 
 @overload
-def bind(entity: TViewModel | LeftExpression[TViewModel]) -> ViewModelLeft[TViewModel]:
+def bind(entity: Union[TViewModel, LeftExpression[TViewModel]]) -> ViewModelLeft[TViewModel]:
     """returns Bindable for entity"""
 
 
@@ -429,7 +420,7 @@ def bind(*args, **_) -> LeftExpression:
 
 @overload
 def sync(
-    event_handler: TEventHandler | LeftExpression[TEventHandler],
+    event_handler: Union[TEventHandler, LeftExpression[TEventHandler]],
     event: wx.PyEventBinder,
     map: Optional[Callable[[Any], Any]] = None,
 ) -> EventHandlerLeft[TEventHandler]:
@@ -438,7 +429,7 @@ def sync(
 
 @overload
 def sync(
-    entity: TViewModel | LeftExpression[TViewModel], map: Optional[Callable[[Any], Any]] = None
+    entity: Union[TViewModel, LeftExpression[TViewModel]], map: Optional[Callable[[Any], Any]] = None
 ) -> ViewModelLeft[TViewModel]:
     """returns Bindable for entity"""
 

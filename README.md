@@ -12,6 +12,8 @@ pip install wxcompose
 
 ## Usage
 
+See [demo](demo)
+
 ### Using components
 
 Here is comparison between wxpython and wxcompose

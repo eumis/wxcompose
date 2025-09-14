@@ -104,7 +104,7 @@ def sizer_add(proportion: int = 0, flag: int = 0, border: int = 0, userData=None
 
 @overload
 def sizer_add(
-    item: wx.Window | wx.Sizer, proportion: int = 0, flag: int = 0, border: int = 0, userData=None
+    item: Union[wx.Window, wx.Sizer], proportion: int = 0, flag: int = 0, border: int = 0, userData=None
 ) -> wx.SizerItem: ...
 
 
@@ -113,7 +113,7 @@ def sizer_add(flags: wx.SizerFlags) -> wx.SizerItem: ...
 
 
 @overload
-def sizer_add(window: wx.Window | wx.Sizer, flags: wx.SizerFlags) -> wx.SizerItem: ...
+def sizer_add(window: Union[wx.Window, wx.Sizer], flags: wx.SizerFlags) -> wx.SizerItem: ...
 
 
 def sizer_add(*args, **kwargs) -> wx.SizerItem:
