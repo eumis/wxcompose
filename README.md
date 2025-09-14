@@ -34,14 +34,14 @@ app.MainLoop()
 import wx
 
 from wxcompose import core as wxc
-from wxcompose.component import layout
+from wxcompose.component import sizer_add
 
 with wxc.App() as app:
     with wxc.Frame(title="Test", style=wx.DEFAULT_FRAME_STYLE | wx.CLIP_CHILDREN) as frame:
         with wxc.BoxSizer(orient=wx.VERTICAL):
             with wxc.StaticText() as _:
                 _.Label = "Some text"
-                layout(flag=wx.EXPAND | wx.ALL)
+                sizer_add(flag=wx.EXPAND | wx.ALL)
         frame.Show()
     app.MainLoop()
 ```
