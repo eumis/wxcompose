@@ -78,7 +78,7 @@ with wxc.Frame(title="Test", style=wx.DEFAULT_FRAME_STYLE | wx.CLIP_CHILDREN) as
 
 ```python
 from wxcompose import core as wxc
-from wxcompose.binding import bind
+from wxcompose.binding import bind, to
 from wxcompose.viewmodel import ViewModel
 
 
@@ -92,16 +92,16 @@ class TestViewModel(ViewModel):
 view_model = TestViewModel()
 
 with wxc.StaticText() as _:
-    _.Label = bind(lambda: f"{view_model.name}: {view_model.label}")
+    bind(_).Label = to(lambda: f"{view_model.name}: {view_model.label}")
 ```
 
 ---
 
-if control property should be updated only when some specific view model field is changed, when() can be used
+if control property should be updated only when some specific view model field is changed, 'when' expression can be passed as second argument
 
 ```python
 from wxcompose import core as wxc
-from wxcompose.binding import bind
+from wxcompose.binding import bind, to
 from wxcompose.viewmodel import ViewModel
 
 
@@ -115,18 +115,40 @@ class TestViewModel(ViewModel):
 view_model = TestViewModel()
 
 with wxc.StaticText() as _:
-    _.Label = bind(lambda: f"{view_model.name}: {view_model.label}").when(lambda: view_model.name)
+    bind(_).Label = to(lambda: f"{view_model.name}: {view_model.label}", lambda: (view_model.name, view_model.label))
 ```
 
 ---
 
-two way binding - on() method can be used to set ui event when view model should be updated and mapper
+method call can be bind to view model changes. True can be passed as third argument to call passed method initially
+
+```python
+from wxcompose import core as wxc
+from wxcompose.binding import bind, to
+from wxcompose.viewmodel import ViewModel
+
+
+class TestViewModel(ViewModel):
+    def __init__(self):
+        super().__init__()
+        self.ui_updated = self.custom_event("ui_updated")
+
+
+view_model = TestViewModel()
+
+with wxc.BoxSizer() as _:
+    bind(_).call(lambda _: _.Layout(), lambda: view_model.ui_updated, True)
+```
+
+---
+
+two way binding
 
 ```python
 import wx
 
 from wxcompose import core as wxc
-from wxcompose.binding import bind
+from wxcompose.binding import sync, to
 from wxcompose.viewmodel import ViewModel
 
 
@@ -139,7 +161,7 @@ class TestViewModel(ViewModel):
 view_model = TestViewModel()
 
 with wxc.TextCtrl() as _:
-    _.Value = bind(lambda: str(view_model)).on(wx.EVT_TEXT, lambda v: int(v))
+    sync(_, wx.EVT_TEXT, lambda v: int(v)).Value = to(view_model).value.map_(lambda v: str(v))
 ```
 
 ## License
